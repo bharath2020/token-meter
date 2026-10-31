@@ -14,25 +14,41 @@ CSP = ("default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline
 
 
 class Hub:
-    """Polls the monitor on one thread and publishes each snapshot to every client."""
+    """Polls the monitor on one thread and publishes each snapshot to every client.
+
+    Every client shares one snapshot per tick. The timeline is built only when asked
+    for, and reused until new calls arrive or the minute changes.
+    """
 
     def __init__(self, monitor, interval):
         self.monitor = monitor
         self.interval = interval
+        self.lock = threading.Lock()  # the monitor is not thread-safe
         self.cond = threading.Condition()
         self.version = 0
         self.body = b"{}"
-        self.timeline = b"{}"
+        self.calls = 0  # calls counted so far; changes when new data arrives
+        self.timeline_key = None
+        self.timeline_body = b"{}"
+        self.timeline_builds = 0
 
     def refresh(self):
-        self.monitor.poll()
-        body = json.dumps(self.monitor.snapshot(), separators=(",", ":")).encode()
-        timeline = json.dumps(self.monitor.timeline(), separators=(",", ":")).encode()
+        with self.lock:
+            self.calls += self.monitor.poll()
+            body = json.dumps(self.monitor.snapshot(), separators=(",", ":")).encode()
         with self.cond:
             self.body = body
-            self.timeline = timeline
             self.version += 1
             self.cond.notify_all()
+
+    def timeline(self):
+        with self.lock:
+            key = (self.calls, int(self.monitor.clock() // 60))
+            if key != self.timeline_key:
+                self.timeline_body = json.dumps(self.monitor.timeline(), separators=(",", ":")).encode()
+                self.timeline_key = key
+                self.timeline_builds += 1
+            return self.timeline_body
 
     def run(self):
         while True:
@@ -82,9 +98,7 @@ def make_handler(hub, page):
                     body = hub.body
                 self._send(200, "application/json", body)
             elif path == "/api/timeline":
-                with hub.cond:
-                    body = hub.timeline
-                self._send(200, "application/json", body)
+                self._send(200, "application/json", hub.timeline())
             elif path == "/events":
                 self._stream()
             else:

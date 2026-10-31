@@ -70,6 +70,7 @@ class Session:
         self.head_path = path
         self.info = SessionInfo()
         self.checked = None
+        self.checked_size = None
         self.recent = []  # sorted [(ts, vec)] for the last hour
         self.minutes = {}  # minute start -> summed vec, for the whole window
         self.mixed = {}  # (minute start, model, effort or "") -> summed vec, for the whole window
@@ -112,7 +113,7 @@ class Session:
 class Monitor:
     def __init__(self, projects_dir, firstmate_home, treehouse_homes=None, clock=time.time, user_home=None):
         self.clock = clock
-        self.tailer = Tailer(projects_dir)
+        self.tailer = Tailer(projects_dir, clock=clock)
         self.fleet = Fleet(firstmate_home, treehouse_homes, user_home)
         self.fleet_loaded = clock()
         self.sessions = {}
@@ -147,9 +148,12 @@ class Monitor:
             self.fleet_loaded = now
             self._prune(now)
         for session in self.sessions.values():
-            stale = not session.info.complete or (session.head_path != session.parent and os.path.exists(session.parent))
-            if stale and now - session.checked >= RECHECK_SECONDS:
+            if now - session.checked < RECHECK_SECONDS:
+                continue
+            if session.head_path != session.parent and os.path.exists(session.parent):
                 self._identify(session, now)
+            elif not session.info.complete and _size(session.head_path) != session.checked_size:
+                self._identify(session, now)  # the head may hold more clues only once it has grown
         if self.startup_seconds is None:
             self.startup_seconds = time.monotonic() - started
         return added
@@ -171,6 +175,7 @@ class Monitor:
     def _identify(self, session, now):
         if session.head_path != session.parent and os.path.exists(session.parent):
             session.head_path = session.parent
+        session.checked_size = _size(session.head_path)
         session.info = read_session_head(session.head_path)
         session.checked = now
 
@@ -330,6 +335,13 @@ class Monitor:
                 "by_effort": _stacks(by_effort, "effort"),
             }
         return {"generated_at": now, "pricing_note": "API-equivalent cost at list prices", "ranges": ranges}
+
+
+def _size(path):
+    try:
+        return os.stat(path).st_size
+    except OSError:
+        return None
 
 
 def _mix_key(worker, model, effort):

@@ -15,7 +15,10 @@ MSG_BYTES = 16 << 10
 
 MSG_RE = re.compile(r"read '([^']+/state/operational-inbox/[^']+\.msg)'")
 INBOX_RE = re.compile(r"Your steering inbox is `([^`]+)/state/([A-Za-z0-9._-]+)\.inbox`")
-BRIEF_RE = re.compile(r"(/[^\s'\"`]*?)/data/([A-Za-z0-9._-]+)/launch-brief\.md")
+BRIEF_TAIL = "/launch-brief.md"
+BRIEF_WINDOW = 1024  # longest home path + task id looked at before each launch-brief.md hit
+TASK_ID_RE = re.compile(r"[A-Za-z0-9._-]+")
+PATH_STOP = " \t\n\r\f\v'\"`"  # characters that end a path in log text
 BACKLOG_RE = re.compile(r"^\s*- \[[ xX]\] ([A-Za-z0-9._-]+) - (.+?)(?: \((?:repo|kind|since|hold|hold-kind):.*)?$")
 
 
@@ -43,6 +46,25 @@ def _strip(path):
 
 def _under(path, root):
     return path == root or path.startswith(root + "/")
+
+
+def find_brief(line):
+    """Return (home, task id) for the first ``<home>/data/<task>/launch-brief.md`` in ``line``.
+
+    Works back from each literal hit with plain string searches over a short window,
+    so the cost stays linear in the line length however many hits it has.
+    """
+    end = line.find(BRIEF_TAIL)
+    while end >= 0:
+        lo = max(0, end - BRIEF_WINDOW)
+        data = line.rfind("/data/", lo, end)
+        if data >= 0 and TASK_ID_RE.fullmatch(line, data + 6, end):
+            start = max(lo, max(line.rfind(c, lo, data) for c in PATH_STOP) + 1)
+            slash = line.find("/", start, data)
+            if slash >= 0:
+                return _strip(line[slash:data]), line[data + 6:end]
+        end = line.find(BRIEF_TAIL, end + len(BRIEF_TAIL))
+    return None
 
 
 def read_msg_inbox(msg_path):
@@ -91,9 +113,7 @@ def read_session_head(path):
                     if inbox:
                         break
         if brief is None:
-            m = BRIEF_RE.search(line)
-            if m:
-                brief = (_strip(m.group(1)), m.group(2))
+            brief = find_brief(line)
         if cwd and inbox:
             break
     complete = bool(cwd and inbox) or lines >= HEAD_LINES or not eof

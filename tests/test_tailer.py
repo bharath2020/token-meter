@@ -64,17 +64,19 @@ class TailerTest(unittest.TestCase):
         t = Tailer(self.root)
         self.assertEqual(collect(t, self.since), {p1: [b"1"]})
         p2 = os.path.join(self.proj, "two.jsonl")
-        p3 = os.path.join(self.proj, "sess", "subagents", "agent-a.jsonl")
         self.write(p2, b"2\n")
+        self.assertEqual(collect(t, self.since), {p2: [b"2"]})
+        # A sub-agent log appears under an active session (which itself just grew).
+        p3 = os.path.join(self.proj, "two", "subagents", "agent-a.jsonl")
         self.write(p3, b"3\n")
-        self.assertEqual(collect(t, self.since), {p2: [b"2"], p3: [b"3"]})
+        self.assertEqual(collect(t, self.since), {p3: [b"3"]})
 
     def test_old_file_skipped_then_appended_lines_read(self):
         p = os.path.join(self.proj, "old.jsonl")
         self.write(p, b"old1\nold2\n")
         old = self.since - 100
         os.utime(p, (old, old))
-        t = Tailer(self.root)
+        t = Tailer(self.root, full_scan_seconds=0)
         self.assertEqual(collect(t, self.since), {})
         self.assertEqual(t.offsets[p], os.path.getsize(p))
         self.write(p, b"new\n")

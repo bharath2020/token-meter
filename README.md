@@ -65,8 +65,18 @@ breakdown, its `cache_creation_input_tokens` count as 5-minute writes.
 
 On start it reads every log modified in the last 48 hours (a couple of seconds for a few
 hundred MB), then tails: it remembers each file's byte offset, reads only complete lines
-appended since the last poll, picks up new files, and starts over if a file shrinks.
-Logs older than 48 hours are skipped to their end and only read if they grow again.
+appended since the last poll, picks up new files, and starts over if a file shrinks or is
+replaced. Logs older than 48 hours are skipped to their end and only read if they grow
+again.
+
+Polls are kept cheap so the monitor stays near idle (about 0.5% of a core with a page
+open). The whole log tree is walked only every 30 seconds; the 2-second polls in between
+check only logs that grew in the last 15 minutes, the project directories (a new session
+log changes its directory) and the `subagents` directories of active sessions. A log
+that was quiet for longer than that is picked up by the next 30-second walk. A
+session's first lines are re-read for attribution only when its log has grown. The
+timeline is built only when the page asks for it and is reused until new calls arrive
+or the minute changes; every connected page shares the same snapshot.
 Sub-agent logs under `<session>/subagents/` count toward their parent session.
 
 It never writes anything under the Firstmate home or `~/.claude`.
