@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Token Meter</title>
+<style>
+:root{
+  --bg:#f6f5f2;--panel:#fff;--panel2:#fbfaf8;--line:#e6e3dd;--text:#1d1c1a;--muted:#6f6b64;--faint:#9a958d;
+  --accent:#d9631e;--accent-bg:#fdf1e8;--accent-line:#f2c9ab;
+  --ok:#2f8a57;--warn:#b7791f;--warn-bg:#fdf5e3;--bad:#c2412d;
+  --s-cr:#7f9cc9;--s-cw:#4fa3a0;--s-out:#d9631e;--s-in:#9b8fb8;--track:#ece9e3;
+  --badge:#efece6;--sel:#1d1c1a;--sel-text:#fff;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#141413;--panel:#1c1c1a;--panel2:#191917;--line:#2e2d2a;--text:#ecebe7;--muted:#a19d95;--faint:#77736c;
+  --accent:#f08a4b;--accent-bg:#2b1f17;--accent-line:#5a3620;
+  --ok:#55c08a;--warn:#e0b04f;--warn-bg:#2c2617;--bad:#ef7a66;
+  --s-cr:#6d8cc0;--s-cw:#4fb0ad;--s-out:#f08a4b;--s-in:#a597c9;--track:#2a2926;
+  --badge:#2a2926;--sel:#ecebe7;--sel-text:#141413;
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-variant-numeric:tabular-nums}
+.wrap{max-width:1180px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-right)) 24px max(16px,env(safe-area-inset-left))}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 0 12px}
+h1{font-size:20px;margin:0;letter-spacing:-.01em;font-weight:650}
+.conn{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:var(--badge);font-weight:550;color:var(--text)}
+.pill i{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+.pill.live i{background:var(--ok)}.pill.recon i{background:var(--warn)}.pill.stale i{background:var(--bad)}
+.pill.stale{color:var(--bad)}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tile{background:var(--panel);padding:10px 12px;min-width:0}
+.tile.now{background:var(--panel)}
+.tile.win{background:var(--panel2);cursor:pointer;border:0;font:inherit;color:inherit;text-align:left}
+.tile.win.on{box-shadow:inset 0 -2px 0 var(--text)}
+.tile .k{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .v{font-size:20px;font-weight:600;margin-top:2px;white-space:nowrap}
+.tile .s{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.hot .v{color:var(--accent)}
+.note{font-size:12px;color:var(--muted);margin:6px 2px 0}
+.banner{margin-top:10px;padding:8px 12px;border-radius:10px;background:var(--warn-bg);color:var(--warn);font-size:13px;overflow-wrap:anywhere}
+.controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:18px 0 8px}
+.seg{display:inline-flex;background:var(--badge);border-radius:9px;padding:2px}
+.seg button{font:inherit;font-size:13px;border:0;background:transparent;color:var(--muted);padding:5px 12px;border-radius:7px;cursor:pointer;min-width:52px}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--text);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.tog{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
+.list{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 8rem 5.5rem 7.5rem 18rem;gap:14px;align-items:center;padding:10px 14px;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.thead{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:8px 14px;background:var(--panel2)}
+.thead .r,.r{text-align:right}
+.row.burn{background:var(--accent-bg);box-shadow:inset 3px 0 0 var(--accent)}
+.row.dim{opacity:.5}
+.main{min-width:0}
+.nm{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.name{font-weight:600;overflow-wrap:anywhere;min-width:0}
+.title{color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.badge{font-size:11px;padding:1px 7px;border-radius:999px;background:var(--badge);color:var(--muted);white-space:nowrap}
+.badge.firstmate{color:var(--text)}
+.badge.other{font-style:italic}
+.burnb{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;letter-spacing:.08em;color:var(--accent);border:1px solid var(--accent-line);padding:0 7px 0 6px;border-radius:999px;background:var(--panel)}
+.burnb i{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.7)}}
+@media (prefers-reduced-motion:reduce){.burnb i{animation:none}}
+.flag{display:inline-block;margin-top:3px;font-size:11.5px;color:var(--warn);background:var(--warn-bg);padding:1px 7px;border-radius:6px;overflow-wrap:anywhere}
+.big{font-weight:600;font-size:14.5px}
+.sm{font-size:12px;color:var(--muted)}
+.burn .rate .big{color:var(--accent)}
+.lbl{display:none}
+.bar{display:flex;height:7px;border-radius:4px;overflow:hidden;background:var(--track)}
+.bar span{display:block;height:100%}
+.cr{background:var(--s-cr)}.cw{background:var(--s-cw)}.out{background:var(--s-out)}.in{background:var(--s-in)}
+.parts{display:grid;grid-template-columns:1fr 1fr;gap:0 10px;margin-top:4px;font-size:11.5px;color:var(--muted)}
+.parts b{font-weight:550;color:var(--text)}
+.parts span{white-space:nowrap}.parts em{font-style:normal}
+.fsplit{display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap;margin:8px 2px 0;font-size:12px;color:var(--muted)}
+.fsplit .k{white-space:nowrap}.fsplit .bar{flex:1 1 140px;min-width:120px}.fsplit .parts{display:flex;flex-wrap:wrap;gap:2px 14px;margin:0}
+.sw{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:4px;vertical-align:0}
+.empty{padding:28px 14px;text-align:center;color:var(--muted)}
+footer{margin-top:16px;font-size:12px;color:var(--muted);display:flex;gap:6px 16px;flex-wrap:wrap;justify-content:space-between}
+@media (max-width:900px){
+  .strip{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .strip .wins{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line)}
+}
+@media (min-width:901px){.strip .wins{display:contents}}
+@media (max-width:720px){
+  .thead{display:none}
+  .row{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:"main main main" "rate last win" "split split split";gap:8px 10px;padding:12px;align-items:start}
+  .main{grid-area:main}.rate{grid-area:rate}.last{grid-area:last}.wc{grid-area:win}.split{grid-area:split}
+  .r{text-align:left}
+  .lbl{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint)}
+  .parts{grid-template-columns:repeat(4,auto);justify-content:space-between}
+}
+@media (max-width:520px){
+  .strip .wins{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tile{padding:8px 10px}
+  .tile .v{font-size:17px}
+  .parts{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Token Meter</h1>
+    <div class="conn"><span id="pill" class="pill"><i></i><span id="pillText">connecting</span></span><span id="ago" class="num">waiting for data</span></div>
+  </header>
+
+  <section class="strip" id="strip" aria-label="Fleet totals"></section>
+  <div class="fsplit" id="fsplit"></div>
+  <p class="note" id="note">API-equiv. cost at list prices</p>
+  <div id="fleetFlag"></div>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Window for per-worker breakdown" id="seg">
+      <button type="button" data-w="5m">5m</button><button type="button" data-w="1h">1h</button><button type="button" data-w="today">today</button><button type="button" data-w="48h">48h</button>
+    </div>
+    <label class="tog"><input type="checkbox" id="hideOther"> Hide not-fleet work <span id="hiddenN"></span></label>
+  </div>
+
+  <section class="list" id="list" aria-live="off"><div class="empty">Waiting for the first snapshot…</div></section>
+
+  <footer><span id="fnote">API-equiv. cost at list prices</span><span id="scan"></span><span>read-only view</span></footer>
+</div>
+<script>
+(function(){
+"use strict";
+var WINS=["5m","1h","today","48h"], WLBL={"5m":"5 min","1h":"1 hour","today":"Today","48h":"48 hours"};
+var KIND={firstmate:"firstmate",secondmate:"second mate",worker:"worker",other:"not fleet"};
+var st={win:"1h",hideOther:false};
+try{var sw=localStorage.getItem("tm.window");if(WINS.indexOf(sw)>=0)st.win=sw;st.hideOther=localStorage.getItem("tm.hideOther")==="1";}catch(e){}
+function save(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+
+var snap=null, recvAt=0, mode="connecting";
+var $=function(id){return document.getElementById(id)};
+
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function n(x){return typeof x==="number"&&isFinite(x)?x:0}
+function fT(v){v=n(v);var a=Math.abs(v);
+  if(a>=1e9)return (v/1e9).toFixed(a<1e10?2:1)+"B";
+  if(a>=1e6)return (v/1e6).toFixed(a<1e7?2:1).replace(/\.0+$/,"")+"M";
+  if(a>=1e3)return (v/1e3).toFixed(a<1e4?1:0).replace(/\.0$/,"")+"K";
+  return String(Math.round(v));}
+function fC(v){v=n(v);if(v===0)return "$0";var a=Math.abs(v);
+  if(a<0.001)return "<$0.001";if(a<0.01)return "$"+v.toFixed(3);
+  if(a<1000)return "$"+v.toFixed(2);
+  return "$"+Math.round(v).toLocaleString("en-US");}
+function fAgo(sec){sec=Math.max(0,Math.floor(sec));
+  if(sec<60)return sec+"s ago";if(sec<3600)return Math.floor(sec/60)+"m ago";
+  if(sec<86400)return Math.floor(sec/3600)+"h ago";return Math.floor(sec/86400)+"d ago";}
+// server-clock "now": avoids client/server skew
+function sNow(){return snap?n(snap.generated_at)+(Date.now()/1000-recvAt):Date.now()/1000}
+function B(o,w){var b=(o&&o.windows&&o.windows[w])||{};return {t:b.tokens||{},c:b.cost||{},calls:n(b.calls)}}
+
+function renderStrip(){
+  var f=snap.fleet||{}, h="";
+  var rate=n(f.rate_usd_per_hour), burn=n(f.burning_count);
+  h+='<div class="tile now'+(burn?" hot":"")+'"><div class="k">Burn rate</div><div class="v num">'+fC(rate)+'<span class="sm">/h</span></div><div class="s">API-equiv. · 5m avg</div></div>';
+  h+='<div class="tile now'+(burn?" hot":"")+'"><div class="k">Tokens / min</div><div class="v num">'+fT(f.tokens_per_min)+'</div><div class="s">across fleet</div></div>';
+  h+='<div class="tile now'+(burn?" hot":"")+'"><div class="k">Burning</div><div class="v num">'+burn+'<span class="sm"> / '+n(f.worker_count)+'</span></div><div class="s">workers active</div></div>';
+  h+='<div class="wins">';
+  WINS.forEach(function(w){var b=B(f,w);
+    h+='<button type="button" class="tile win'+(w===st.win?" on":"")+'" data-w="'+w+'" aria-label="Show '+WLBL[w]+' breakdown"><div class="k">'+WLBL[w]+'</div><div class="v num">'+fC(b.c.total)+'</div><div class="s num">'+fT(b.t.total)+' tok · '+fT(b.calls)+' calls</div></button>';});
+  h+='</div>';
+  $("strip").innerHTML=h;
+  var fb=B(f,st.win);
+  $("fsplit").innerHTML='<span class="k">Fleet '+esc(WLBL[st.win])+': <b class="num" style="color:var(--text)">'+fC(fb.c.total)+'</b></span>'+split(fb.t,fb.c);
+  var pn=esc(snap.pricing_note||"API-equivalent cost at list prices");
+  $("note").innerHTML="Costs: "+pn;
+  $("fnote").innerHTML=pn;
+  var um=snap.unknown_models||[];
+  $("fleetFlag").innerHTML=um.length?'<div class="banner">⚠ Unpriced model'+(um.length>1?"s":"")+' (cost excluded): '+um.map(esc).join(", ")+'</div>':"";
+  var sc=snap.scan||{};
+  $("scan").textContent=n(sc.files)+" files scanned · startup "+n(sc.startup_seconds).toFixed(1)+"s";
+}
+
+function split(t,c){c=c||{};
+  var p=[["cr","read",n(t.cache_read),c.cache_read],["cw","write",n(t.cache_write),c.cache_write],["out","out",n(t.output),c.output],["in","in",n(t.input),c.input]];
+  var tot=p.reduce(function(a,x){return a+x[2]},0), bar="", nums="";
+  p.forEach(function(x){
+    if(tot>0&&x[2]>0)bar+='<span class="'+x[0]+'" style="width:'+(x[2]/tot*100).toFixed(2)+'%" title="'+(x[1]==="read"?"cache read":x[1]==="write"?"cache write":x[1]==="out"?"output":"input")+'"></span>';
+    nums+='<span><i class="sw '+x[0]+'"></i>'+x[1]+' <b class="num">'+fT(x[2])+'</b> <em class="num">· '+fC(x[3])+'</em></span>';});
+  return '<div class="bar" aria-hidden="true">'+bar+'</div><div class="parts">'+nums+'</div>';
+}
+
+function renderList(){
+  var all=snap.workers||[], hidden=0, w=st.win;
+  var rows=all.filter(function(x){if(st.hideOther&&x.kind==="other"){hidden++;return false}return true});
+  $("hiddenN").textContent=hidden?"("+hidden+" hidden)":"";
+  var h='<div class="row thead"><div>Worker</div><div class="r">Now</div><div class="r">Last active</div><div class="r">'+esc(WLBL[w])+'</div><div>Token split</div></div>';
+  if(!rows.length){$("list").innerHTML=h+'<div class="empty">'+(all.length?"All rows hidden by filter.":"No Claude Code sessions in the last 48 hours.")+'</div>';return;}
+  rows.forEach(function(x){
+    var b=B(x,w), burning=!!x.burning, kind=KIND[x.kind]?x.kind:"other";
+    var dim=!burning&&n(b.t.total)===0;
+    var um=x.unknown_models||[];
+    var models=(x.models||[]).join(", ");
+    var tip="sessions: "+n(x.sessions)+(models?" · models: "+models:"")+(x.owner?" · owner: "+x.owner:"");
+    h+='<div class="row'+(burning?" burn":"")+(dim?" dim":"")+'" title="'+esc(tip)+'">';
+    h+='<div class="main"><div class="nm">'+(burning?'<span class="burnb"><i></i>BURNING</span>':"")+'<span class="name">'+esc(x.name||x.key)+'</span><span class="badge '+kind+'">'+KIND[kind]+'</span></div>';
+    if(x.title)h+='<div class="title" title="'+esc(x.title)+'">'+esc(x.title)+'</div>';
+    if(um.length)h+='<span class="flag">⚠ unpriced model: '+um.map(esc).join(", ")+'</span>';
+    h+='</div>';
+    var r=n(x.rate_usd_per_hour), tpm=n(x.tokens_per_min);
+    h+='<div class="rate r"><span class="lbl">Now</span><div class="big num">'+(r||tpm?fC(r)+'<span class="sm">/h</span>':'<span class="muted">—</span>')+'</div><div class="sm num">'+(tpm?fT(tpm)+" tok/min":"idle")+'</div></div>';
+    h+='<div class="last r"><span class="lbl">Last active</span><div class="num" data-t="'+(x.last_activity==null?"":n(x.last_activity))+'">'+(x.last_activity==null?"—":fAgo(sNow()-n(x.last_activity)))+'</div></div>';
+    h+='<div class="wc r"><span class="lbl">'+esc(WLBL[w])+'</span><div class="big num">'+fC(b.c.total)+'</div><div class="sm num">'+fT(b.t.total)+' tok</div></div>';
+    h+='<div class="split">'+split(b.t,b.c)+'</div>';
+    h+='</div>';
+  });
+  $("list").innerHTML=h;
+}
+
+function render(){
+  if(!snap)return;
+  renderStrip();renderList();
+  var f=snap.fleet||{};
+  document.title=(n(f.burning_count)?"● ":"")+fC(f.rate_usd_per_hour)+"/h · Token Meter";
+}
+function syncSeg(){[].forEach.call($("seg").children,function(b){b.setAttribute("aria-pressed",b.dataset.w===st.win?"true":"false")})}
+function setWin(w){if(WINS.indexOf(w)<0||w===st.win)return;st.win=w;save("tm.window",w);syncSeg();render()}
+
+$("seg").addEventListener("click",function(e){var b=e.target.closest("button[data-w]");if(b)setWin(b.dataset.w)});
+$("strip").addEventListener("click",function(e){var b=e.target.closest("button[data-w]");if(b)setWin(b.dataset.w)});
+var ho=$("hideOther");ho.checked=st.hideOther;
+ho.addEventListener("change",function(){st.hideOther=ho.checked;save("tm.hideOther",ho.checked?"1":"0");render()});
+syncSeg();
+
+function accept(data){
+  var s;try{s=typeof data==="string"?JSON.parse(data):data}catch(e){return false}
+  if(!s||typeof s!=="object")return false;
+  if(snap&&n(s.generated_at)<n(snap.generated_at))return true;
+  snap=s;recvAt=Date.now()/1000;render();tick();return true;
+}
+
+// ---- transport: SSE preferred, polling fallback ----
+var es=null, errs=0, pollT=null;
+function setMode(m){mode=m;tick()}
+function startPoll(){
+  if(pollT)return;
+  if(es){try{es.close()}catch(e){}es=null}
+  setMode("polling");
+  var go=function(){
+    fetch("api/snapshot",{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()})
+      .then(function(j){if(accept(j))setMode("polling")}).catch(function(){setMode("reconnecting")})
+      .then(function(){pollT=setTimeout(go,3000)});
+  };
+  go();
+}
+function startSSE(){
+  if(!window.EventSource){startPoll();return}
+  try{es=new EventSource("events")}catch(e){startPoll();return}
+  es.onopen=function(){setMode("live")};
+  es.onmessage=function(e){if(accept(e.data)){errs=0;setMode("live")}};
+  es.onerror=function(){
+    errs++;
+    if(errs>=3||(es&&es.readyState===2))startPoll();else setMode("reconnecting");
+  };
+}
+// fast first paint while SSE connects
+fetch("api/snapshot",{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j)accept(j)}).catch(function(){});
+startSSE();
+
+function tick(){
+  var age=snap?Date.now()/1000-recvAt:Infinity, p=$("pill"), cls, txt;
+  if(snap&&age>10){cls="stale";txt="stale"}
+  else if(mode==="live"){cls="live";txt="live"}
+  else if(mode==="polling"){cls=snap?"live":"recon";txt=snap?"live (polling)":"polling"}
+  else if(mode==="reconnecting"){cls="recon";txt="reconnecting"}
+  else{cls="";txt="connecting"}
+  p.className="pill "+cls;$("pillText").textContent=txt;
+  $("ago").textContent=snap?"updated "+fAgo(age):"waiting for data";
+  if(snap){var now=sNow();
+    [].forEach.call(document.querySelectorAll("[data-t]"),function(el){var t=el.getAttribute("data-t");if(t!=="")el.textContent=fAgo(now-Number(t))});}
+}
+setInterval(tick,1000);
+})();
+</script>
+</body>
+</html>
