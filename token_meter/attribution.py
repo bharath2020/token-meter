@@ -34,6 +34,7 @@ class Worker:
     name: str
     title: str = None
     owner: str = None
+    effort: str = None  # effort= from the worker's state/*.meta record, if any
 
 
 def _strip(path):
@@ -136,14 +137,17 @@ class Fleet:
         self.secondmates = {}  # home path -> second mate id
         self.worktrees = {}  # worktree path -> (owner or None, task id)
         self.titles = {}  # home path -> {task id: title}
+        self.efforts = {}  # (owner or None, task or second mate id) -> effort= from its meta
         self.reload()
 
     def reload(self):
-        secondmates, worktrees = {}, {}
+        secondmates, worktrees, efforts = {}, {}, {}
         main_metas = sorted(glob.glob(os.path.join(self.home, "state", "*.meta")))
         for path in main_metas:
             kv = _read_meta(path)
             tid = os.path.basename(path)[:-5]
+            if kv.get("effort"):
+                efforts[(None, tid)] = kv["effort"]
             if kv.get("kind") == "secondmate" and kv.get("home"):
                 secondmates[_strip(kv["home"])] = tid
         for path in main_metas:
@@ -153,12 +157,15 @@ class Fleet:
         for sm_home, sm in secondmates.items():
             for path in sorted(glob.glob(os.path.join(sm_home, "state", "*.meta"))):
                 kv = _read_meta(path)
+                tid = os.path.basename(path)[:-5]
+                if kv.get("effort"):
+                    efforts.setdefault((sm, tid), kv["effort"])
                 if kv.get("worktree") and kv.get("kind") != "secondmate":
-                    worktrees.setdefault(_strip(kv["worktree"]), (sm, os.path.basename(path)[:-5]))
+                    worktrees.setdefault(_strip(kv["worktree"]), (sm, tid))
         titles = {self.home: _read_backlog(self.home)}
         for sm_home in secondmates:
             titles[sm_home] = _read_backlog(sm_home)
-        self.secondmates, self.worktrees, self.titles = secondmates, worktrees, titles
+        self.secondmates, self.worktrees, self.titles, self.efforts = secondmates, worktrees, titles, efforts
 
     def _title(self, home, tid):
         return self.titles.get(home, {}).get(tid)
@@ -179,13 +186,14 @@ class Fleet:
         title = self._title(home, tid) if home else None
         if title is None and owner is None:
             title = self._title(self.home, tid)
-        return Worker(f"task:{owner or ''}/{tid}", "worker", name, title, owner)
+        return Worker(f"task:{owner or ''}/{tid}", "worker", name, title, owner, self.efforts.get((owner, tid)))
 
     def attribute(self, info):
         cwd = info.cwd or ""
         for sm_home, sm in self.secondmates.items():
             if cwd and _under(cwd, sm_home):
-                return Worker(f"secondmate:{sm}", "secondmate", sm, self._title(self.home, sm))
+                return Worker(f"secondmate:{sm}", "secondmate", sm, self._title(self.home, sm),
+                              effort=self.efforts.get((None, sm)))
         if cwd and _under(cwd, self.home):
             return Worker("firstmate", "firstmate", "firstmate main session")
         for clue in (info.inbox, info.brief):

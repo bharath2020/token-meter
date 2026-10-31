@@ -35,6 +35,24 @@ def ago(ts, now):
     return f"{s // 86400}d"
 
 
+SPARKS = " ▁▂▃▄▅▆▇█"
+
+
+def sparkline(values):
+    top = max(values, default=0)
+    if top <= 0:
+        return SPARKS[0] * len(values)
+    return "".join(SPARKS[0] if v <= 0 else SPARKS[max(1, round(v / top * 8))] for v in values)
+
+
+def model_effort(model, effort):
+    """Short "opus-5-5 high" label for a model id and effort level."""
+    if not model:
+        return "-"
+    short = model[len("claude-"):] if model.startswith("claude-") else model
+    return f"{short} {effort}" if effort else short
+
+
 def _cut(text, width):
     return text if len(text) <= width else text[:max(0, width - 1)] + "…"
 
@@ -55,12 +73,15 @@ def render(snap, width=120, color=True, window="1h"):
     lines.append(f"Split ({window}): " + " · ".join(
         f"{label.lower()} {tok(fw[window]['tokens'][key])} ${usd(fw[window]['cost'][key])} ({fw[window]['tokens'][key] * 100 // total}%)"
         for key, label in SPLIT))
+    hourly = fleet.get("hourly_cost_48h")
+    if hourly:
+        lines.append(f"$/hour 48h→now {sparkline(hourly[-max(8, width - 32):])}  peak ${usd(max(hourly))}/h  now ${usd(hourly[-1])}")
     lines.append(paint(snap.get("pricing_note", "") + "; ● = call in the last 2 minutes; rate over the last 5 minutes", DIM))
     if snap.get("unknown_models"):
         lines.append(paint("Unpriced models (counted at $0): " + ", ".join(snap["unknown_models"]), YELLOW))
     lines.append("")
 
-    fixed = [("$/HOUR", 8), ("TOK/MIN", 8), ("LAST", 5)] + [(f"{k.upper()} $", 9) for k in WINDOWS]
+    fixed = [("MODEL·EFFORT", 15), ("$/HOUR", 8), ("TOK/MIN", 8), ("LAST", 5)] + [(f"{k.upper()} $", 9) for k in WINDOWS]
     split = [(f"{label}", 8) for _, label in SPLIT]  # tokens in the chosen window, as on the Split line
     base = 2 + sum(w + 1 for _, w in fixed)
     show_split = width - base - 2 - sum(w + 1 for _, w in split) >= 24
@@ -74,11 +95,11 @@ def render(snap, width=120, color=True, window="1h"):
         name = r["name"] + (f" — {r['title']}" if r.get("title") else "")
         if r.get("unknown_models"):
             name = "! " + name
-        cells = [usd(r["rate_usd_per_hour"]), tok(r["tokens_per_min"]), ago(r["last_activity"], now)]
+        cells = [model_effort(r.get("current_model"), r.get("current_effort")), usd(r["rate_usd_per_hour"]), tok(r["tokens_per_min"]), ago(r["last_activity"], now)]
         cells += [usd(w[k]["cost"]["total"]) for k in WINDOWS]
         if show_split:
             cells += ["|"] + [tok(w[window]["tokens"][key]) for key, _ in SPLIT]
-        row = _cut(name, name_w).ljust(name_w) + "".join(" " + c.rjust(cw) for c, (_, cw) in zip(cells, cols))
+        row = _cut(name, name_w).ljust(name_w) + "".join(" " + _cut(c, cw).rjust(cw) for c, (_, cw) in zip(cells, cols))
         if r["burning"]:
             lines.append(paint("● ", RED, BOLD) + paint(row, YELLOW, BOLD))
         elif not w[window]["tokens"]["total"]:

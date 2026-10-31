@@ -38,6 +38,8 @@ class Call:
     tokens: Tokens
     cost: dict  # per-category dollars; all zero for an unknown model
     priced: bool
+    effort: str = ""  # effort recorded on the usage line itself, if any
+    request_ref: str = None  # id of the "api-request" line this call answers
 
 
 def _int(value):
@@ -91,4 +93,33 @@ def parse_line(line):
     model = msg.get("model") or ""
     tokens = tokens_from_usage(msg["usage"])
     c = pricing.cost(model, tokens)
-    return Call(key, ts, model, tokens, c or dict(ZERO_COST), c is not None)
+    effort = d.get("effort") if isinstance(d.get("effort"), str) else ""
+    ref = d.get("requestRef") if isinstance(d.get("requestRef"), str) else None
+    return Call(key, ts, model, tokens, c or dict(ZERO_COST), c is not None, effort, ref)
+
+
+def parse_request(line):
+    """Return ``(request id, effort, timestamp)`` for an ``api-request`` line, else None.
+
+    Claude Code logs each API request as an ``api-request`` line whose ``id`` the
+    answering assistant lines carry as ``requestRef``; the effort level is in
+    ``params.output_config.effort``.
+    """
+    markers = (b'"type":"api-request"', b'"type": "api-request"') if isinstance(line, bytes) \
+        else ('"type":"api-request"', '"type": "api-request"')
+    if not any(m in line for m in markers):
+        return None
+    try:
+        d = json.loads(line)
+    except ValueError:
+        return None
+    if not isinstance(d, dict) or d.get("type") != "api-request" or not isinstance(d.get("id"), str):
+        return None
+    params = d.get("params") if isinstance(d.get("params"), dict) else {}
+    config = params.get("output_config") if isinstance(params.get("output_config"), dict) else {}
+    effort = config.get("effort") if isinstance(config.get("effort"), str) else ""
+    try:
+        ts = datetime.fromisoformat(d["timestamp"].replace("Z", "+00:00")).timestamp()
+    except (KeyError, AttributeError, ValueError):
+        ts = None
+    return d["id"], effort, ts

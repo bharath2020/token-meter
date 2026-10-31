@@ -22,12 +22,15 @@ class Hub:
         self.cond = threading.Condition()
         self.version = 0
         self.body = b"{}"
+        self.timeline = b"{}"
 
     def refresh(self):
         self.monitor.poll()
         body = json.dumps(self.monitor.snapshot(), separators=(",", ":")).encode()
+        timeline = json.dumps(self.monitor.timeline(), separators=(",", ":")).encode()
         with self.cond:
             self.body = body
+            self.timeline = timeline
             self.version += 1
             self.cond.notify_all()
 
@@ -77,6 +80,10 @@ def make_handler(hub, page):
             elif path == "/api/snapshot":
                 with hub.cond:
                     body = hub.body
+                self._send(200, "application/json", body)
+            elif path == "/api/timeline":
+                with hub.cond:
+                    body = hub.timeline
                 self._send(200, "application/json", body)
             elif path == "/events":
                 self._stream()

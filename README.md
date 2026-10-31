@@ -20,7 +20,8 @@ The web server listens on `127.0.0.1:4791` and on this Mac's ZeroTier address
 is not available (ZeroTier down), it says so and keeps serving on the others.
 
 The page updates over server-sent events (`/events`) and falls back to polling
-`/api/snapshot`. Both, and the page itself, are GET-only: no actions, and only worker
+`/api/snapshot`; its timeline chart reads `/api/timeline`. All of them, and the page
+itself, are GET-only: no actions, and only worker
 names, backlog titles, working-directory names, model names, token counts and costs are
 shown - never message content or secrets.
 
@@ -45,6 +46,13 @@ last 5 minutes); the time of the last API call; and a "burning" marker when that
 in the last 2 minutes. Workers are sorted by current burn rate, then by most recent
 activity.
 
+The web page also has a timeline chart of when the burn happened: cost or tokens per
+15-minute bucket over the last 48 hours, or per 5-minute bucket over the last 6 hours,
+stacked by worker. The six workers that burned most in the range are shown separately
+and the rest fold into "others"; hovering or tapping a bucket shows each worker's
+cache read / cache write / output / input split. The terminal view shows a per-hour
+sparkline of fleet cost over the last 48 hours.
+
 ## How it reads usage
 
 Every worker runs Claude Code, which logs to `~/.claude/projects/**/*.jsonl`. Each
@@ -62,6 +70,22 @@ Logs older than 48 hours are skipped to their end and only read if they grow aga
 Sub-agent logs under `<session>/subagents/` count toward their parent session.
 
 It never writes anything under the Firstmate home or `~/.claude`.
+
+## Model and effort
+
+Each call's model is `message.model` on its usage line. Its effort level comes from the
+request: Claude Code logs every API request as an `api-request` line whose
+`params.output_config.effort` holds the effort and whose `id` the answering assistant
+lines carry as `requestRef`, so calls are joined to requests by that id (not by order;
+the request line comes first in the same log). If a call has no matching request, the
+`effort` field on its own line is used, then the `effort=` value in the worker's
+`state/*.meta` record; otherwise it shows "unknown". (`api-request-blob` lines also
+carry `output_config.effort` but have no request id, so they are not used.)
+
+Both views show each worker's current model and effort (of its latest call); the web
+page also lists the 48-hour model/effort mix with costs, can colour the timeline by
+worker, model or effort, and shows each worker's models and efforts with their cost in
+a bucket's breakdown.
 
 ## How sessions are attributed to workers
 
