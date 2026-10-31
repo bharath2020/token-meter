@@ -16,21 +16,9 @@ def looks_like_home(path):
     return all(os.path.isdir(os.path.join(path, d)) for d in ("bin", "data", "state"))
 
 
-def find_home(start):
-    """The nearest Firstmate home at or above ``start``, or None."""
-    path = os.path.abspath(start)
-    while True:
-        if looks_like_home(path):
-            return path
-        parent = os.path.dirname(path)
-        if parent == path:
-            return None
-        path = parent
-
-
 def resolve_home(flag, env=None, cwd=None):
-    """--home, then $TOKEN_METER_FIRSTMATE_HOME, then the Firstmate home holding the current
-    directory. Raises ValueError with a hint when none is found or the given one is missing."""
+    """--home, then $TOKEN_METER_FIRSTMATE_HOME, then the current directory if it is itself a
+    Firstmate home. Raises ValueError with a hint when none is found or the given one is missing."""
     env = os.environ if env is None else env
     given = flag or env.get(HOME_ENV)
     if given:
@@ -38,10 +26,10 @@ def resolve_home(flag, env=None, cwd=None):
         if not os.path.isdir(home):
             raise ValueError(f"Firstmate home {home} is not a directory")
         return home
-    home = find_home(cwd or os.getcwd())
-    if home is None:
+    home = os.path.abspath(cwd or os.getcwd())
+    if not looks_like_home(home):
         raise ValueError("no Firstmate home found: pass --home <path>, set "
-                         f"{HOME_ENV}, or run from inside a Firstmate home")
+                         f"{HOME_ENV}, or run from a Firstmate home")
     return home
 
 
@@ -55,7 +43,7 @@ def main(argv=None):
     p.add_argument("--projects", default=os.environ.get("TOKEN_METER_PROJECTS", os.path.expanduser("~/.claude/projects")),
                    help="Claude Code session logs (default ~/.claude/projects)")
     p.add_argument("--home",
-                   help=f"Firstmate home (default ${HOME_ENV}, else the Firstmate home holding the current directory)")
+                   help=f"Firstmate home (default ${HOME_ENV}, else the current directory if it is a Firstmate home)")
     p.add_argument("--interval", type=float, default=2.0, help="seconds between updates (default 2)")
     p.add_argument("--host", default=os.environ.get("TOKEN_METER_HOSTS", DEFAULT_HOSTS),
                    help=f"web: comma-separated addresses to listen on (default {DEFAULT_HOSTS})")

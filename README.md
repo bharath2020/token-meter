@@ -11,12 +11,11 @@ and as a terminal table.
 curl -fsSL https://raw.githubusercontent.com/bharath2020/token-meter/main/install.sh | sh
 ```
 
-It needs only `python3` (3.11 or newer; standard library only) plus `curl` or `wget` and
-`tar`; no git and no sudo. It installs the program into `~/.local/share/token-meter` and a
+It needs only `python3` (3.11 or newer; standard library only) plus `curl` and `tar`; no
+git and no sudo. It installs the program into `~/.local/share/token-meter` and a
 `token-meter` launcher into `~/.local/bin`, and warns if `~/.local/bin` is not on your
-`PATH`. Run the same command again to upgrade. To install elsewhere, set `PREFIX` (uses
-`$PREFIX/share/token-meter` and `$PREFIX/bin`), or `TOKEN_METER_INSTALL_DIR` and
-`TOKEN_METER_BIN_DIR`. To uninstall, delete those two paths.
+`PATH`. Run the same command again to upgrade. To uninstall, delete
+`~/.local/share/token-meter` and `~/.local/bin/token-meter`.
 
 From a clone, `./token-meter` in the repository works the same way without installing.
 
@@ -31,8 +30,8 @@ token-meter tui                    # live terminal table (Ctrl-C to quit)
 ## Start a view
 
 The Firstmate home is taken from `--home`, else `TOKEN_METER_FIRSTMATE_HOME`, else the
-Firstmate home that holds the current directory (the nearest directory at or above it
-with `bin/`, `data/` and `state/` subdirectories). If none is found it exits with an
+current directory if it is itself a Firstmate home (has `bin/`, `data/` and `state/`
+subdirectories; parent directories are not searched). If none is found it exits with an
 error saying how to name one.
 
 The web server listens on `127.0.0.1:4791` only. To reach it from another device, add
@@ -56,7 +55,7 @@ Useful options (`token-meter --help` lists all):
 | `--window` | `1h` | tui: window for the token split columns (`5m`, `1h`, `today`, `48h`) |
 | `--once` | | tui: print one frame and exit |
 | `--projects` | `~/.claude/projects` (`TOKEN_METER_PROJECTS`) | session logs |
-| `--home` | `TOKEN_METER_FIRSTMATE_HOME`, else the Firstmate home holding the current directory | Firstmate home |
+| `--home` | `TOKEN_METER_FIRSTMATE_HOME`, else the current directory if it is a Firstmate home | Firstmate home |
 
 ## What it shows
 

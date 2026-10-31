@@ -40,8 +40,7 @@ class InstallScriptTest(unittest.TestCase):
         self.tarball = build_tarball(os.path.join(self.root, "main.tar.gz"))
 
     def env(self, **extra):
-        env = {k: v for k, v in os.environ.items()
-               if not k.startswith("TOKEN_METER_") and k != "PREFIX"}
+        env = {k: v for k, v in os.environ.items() if not k.startswith("TOKEN_METER_")}
         env.update(HOME=self.home, TMPDIR=self.root, TOKEN_METER_TARBALL_URL="file://" + self.tarball)
         env.update(extra)
         return env
@@ -85,30 +84,13 @@ class InstallScriptTest(unittest.TestCase):
         self.assertFalse(os.path.exists(stale))
         self.assertTrue(os.path.exists(os.path.join(install_dir, "VERSION-MARKER")))
 
-    def test_overrides_and_path_with_spaces(self):
-        install_dir = os.path.join(self.root, "my apps", "it's token-meter")
-        bin_dir = os.path.join(self.root, "my bin")
-        result = self.install(TOKEN_METER_INSTALL_DIR=install_dir, TOKEN_METER_BIN_DIR=bin_dir)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        run = subprocess.run([os.path.join(bin_dir, "token-meter"), "--help"], env=self.env(),
-                             capture_output=True, text=True, timeout=60, cwd=self.root)
-        self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertFalse(os.path.exists(os.path.join(self.home, ".local")))
-
-    def test_prefix(self):
-        prefix = os.path.join(self.root, "prefix")
-        result = self.install(PREFIX=prefix)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertTrue(os.path.isdir(os.path.join(prefix, "share", "token-meter", "token_meter")))
-        self.assertTrue(os.access(os.path.join(prefix, "bin", "token-meter"), os.X_OK))
-
     def test_refuses_to_replace_unrelated_directory(self):
-        install_dir = os.path.join(self.root, "precious")
+        install_dir = os.path.join(self.home, ".local", "share", "token-meter")
         os.makedirs(install_dir)
         keep = os.path.join(install_dir, "keep.txt")
         with open(keep, "w") as f:
             f.write("mine\n")
-        result = self.install(TOKEN_METER_INSTALL_DIR=install_dir)
+        result = self.install()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("not a token-meter install", result.stderr)
         self.assertTrue(os.path.exists(keep))
@@ -118,16 +100,24 @@ class InstallScriptTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("download failed", result.stderr)
 
-    def test_requires_python3(self):
-        # A PATH with the basic tools but no python3.
+    def test_requires_curl(self):
+        tools = self.tools_without("curl")
+        result = self.install(PATH=tools)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("curl is required", result.stderr)
+
+    def tools_without(self, missing):
         tools = os.path.join(self.root, "tools")
         os.makedirs(tools)
-        for name in ("sh", "tar", "curl", "mktemp", "rm", "mkdir", "cp", "mv", "sed", "chmod",
-                     "dirname", "ls", "cat"):
+        for name in ("sh", "tar", "curl", "python3", "mktemp", "rm", "mkdir", "cp", "mv", "sed",
+                     "chmod", "dirname", "ls", "cat"):
             found = shutil.which(name)
-            if found:
+            if found and name != missing:
                 os.symlink(found, os.path.join(tools, name))
-        result = self.install(PATH=tools)
+        return tools
+
+    def test_requires_python3(self):
+        result = self.install(PATH=self.tools_without("python3"))
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("python3 is required", result.stderr)
 

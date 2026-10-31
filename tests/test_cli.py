@@ -56,11 +56,12 @@ class ResolveHomeTest(CleanEnv):
         home = make_home(os.path.join(self.root, "fm"))
         self.assertEqual(cli.resolve_home(None, env={}, cwd=home), home)
 
-    def test_cwd_inside_home(self):
+    def test_subdirectory_of_home_is_not_a_home(self):
         home = make_home(os.path.join(self.root, "fm"))
         deep = os.path.join(home, "data", "task-1")
         os.makedirs(deep)
-        self.assertEqual(cli.resolve_home(None, env={}, cwd=deep), home)
+        with self.assertRaisesRegex(ValueError, "no Firstmate home found"):
+            cli.resolve_home(None, env={}, cwd=deep)
 
     def test_partial_layout_is_not_a_home(self):
         partial = os.path.join(self.root, "partial")
@@ -114,7 +115,7 @@ class MainDefaultsTest(CleanEnv):
 
     def test_home_from_cwd(self):
         home = make_home(os.path.join(self.root, "fm"))
-        served = self.run_main(["web"], cwd=os.path.join(home, "state"))
+        served = self.run_main(["web"], cwd=home)
         self.assertEqual(served["monitor"], ("monitor", home))
 
     def test_no_home_is_a_clear_error(self):
