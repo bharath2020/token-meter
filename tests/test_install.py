@@ -66,6 +66,22 @@ class InstallScriptTest(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn("usage: token-meter", run.stdout)
 
+    def test_launcher_ignores_token_meter_package_in_cwd(self):
+        self.assertEqual(self.install().returncode, 0)
+        launcher = os.path.join(self.home, ".local", "bin", "token-meter")
+        cwd = os.path.join(self.root, "untrusted")
+        os.makedirs(os.path.join(cwd, "token_meter"))
+        with open(os.path.join(cwd, "token_meter", "__init__.py"), "w"):
+            pass
+        with open(os.path.join(cwd, "token_meter", "__main__.py"), "w") as f:
+            f.write("print('SHADOWED-PACKAGE-RAN')\n")
+
+        run = subprocess.run([launcher, "--help"], env=self.env(), capture_output=True, text=True,
+                             timeout=60, cwd=cwd)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertNotIn("SHADOWED-PACKAGE-RAN", run.stdout + run.stderr)
+        self.assertIn("usage: token-meter", run.stdout)
+
     def test_no_path_warning_when_bin_dir_on_path(self):
         bin_dir = os.path.join(self.home, ".local", "bin")
         result = self.install(PATH=bin_dir + os.pathsep + os.environ.get("PATH", ""))
