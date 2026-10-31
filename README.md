@@ -3,21 +3,41 @@
 A read-only live monitor of token burn and API-equivalent cost per Firstmate worker
 (task workers, second mates and the main Firstmate session), built from Claude Code's
 session logs. It shows which worker is consuming tokens right now, as a web page
-(Mac and phone) and as a terminal table.
+and as a terminal table.
 
-Python 3.11+ standard library only; nothing to install.
+## Install
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/bharath2020/token-meter/main/install.sh | sh
+```
+
+It needs only `python3` (3.11 or newer; standard library only) plus `curl` and `tar`; no
+git and no sudo. It installs the program into `~/.local/share/token-meter` and a
+`token-meter` launcher into `~/.local/bin`, and warns if `~/.local/bin` is not on your
+`PATH`. Run the same command again to upgrade. To uninstall, delete
+`~/.local/share/token-meter` and `~/.local/bin/token-meter`.
+
+From a clone, `./token-meter` in the repository works the same way without installing.
+
+## Quick start
+
+```sh
+cd ~/path/to/your/firstmate/home   # or pass --home, or set TOKEN_METER_FIRSTMATE_HOME
+token-meter web                    # then open http://127.0.0.1:4791/
+token-meter tui                    # live terminal table (Ctrl-C to quit)
+```
 
 ## Start a view
 
-```sh
-./token-meter web     # web page on port 4791
-./token-meter tui     # live terminal table (Ctrl-C to quit)
-```
+The Firstmate home is taken from `--home`, else `TOKEN_METER_FIRSTMATE_HOME`, else the
+current directory if it is itself a Firstmate home (has `bin/`, `data/` and `state/`
+subdirectories; parent directories are not searched). If none is found it exits with an
+error saying how to name one.
 
-The web server listens on `127.0.0.1:4791` and on this Mac's ZeroTier address
-`10.104.135.155:4791`, so open <http://127.0.0.1:4791/> on the Mac and
-<http://10.104.135.155:4791/> on a phone joined to the ZeroTier network. If an address
-is not available (ZeroTier down), it says so and keeps serving on the others.
+The web server listens on `127.0.0.1:4791` only. To reach it from another device, add
+that machine's address with `--host` (or `TOKEN_METER_HOSTS`), for example
+`--host 127.0.0.1,192.0.2.10`. If an address is not available, it says so and keeps
+serving on the others.
 
 The page updates over server-sent events (`/events`) and falls back to polling
 `/api/snapshot`; its timeline chart reads `/api/timeline`. All of them, and the page
@@ -25,17 +45,17 @@ itself, are GET-only: no actions, and only worker
 names, backlog titles, working-directory names, model names, token counts and costs are
 shown - never message content or secrets.
 
-Useful options (`./token-meter --help` lists all):
+Useful options (`token-meter --help` lists all):
 
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `--port` | `4791` (`TOKEN_METER_PORT`) | web port |
-| `--host` | `127.0.0.1,10.104.135.155` (`TOKEN_METER_HOSTS`) | addresses to listen on |
+| `--host` | `127.0.0.1` (`TOKEN_METER_HOSTS`) | comma-separated addresses to listen on |
 | `--interval` | `2` | seconds between updates |
 | `--window` | `1h` | tui: window for the token split columns (`5m`, `1h`, `today`, `48h`) |
 | `--once` | | tui: print one frame and exit |
 | `--projects` | `~/.claude/projects` (`TOKEN_METER_PROJECTS`) | session logs |
-| `--home` | `/Users/bharath2020/Documents/firstmate` (`TOKEN_METER_FIRSTMATE_HOME`) | Firstmate home |
+| `--home` | `TOKEN_METER_FIRSTMATE_HOME`, else the current directory if it is a Firstmate home | Firstmate home |
 
 ## What it shows
 

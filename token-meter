@@ -1,4 +1,4 @@
 #!/bin/sh
 # Start a view: ./token-meter web   or   ./token-meter tui   (see README.md)
 here=$(cd "$(dirname "$0")" && pwd -P)
-PYTHONPATH="$here${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m token_meter "$@"
+PYTHONPATH="$here${PYTHONPATH:+:$PYTHONPATH}" exec python3 -P -m token_meter "$@"
