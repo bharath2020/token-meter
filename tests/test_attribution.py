@@ -182,6 +182,26 @@ class AttributionTest(unittest.TestCase):
         self.assertEqual(w.kind, "other")
         self.assertTrue(w.name.startswith("not fleet work"))
 
+    def test_no_home_shows_the_working_directory(self):
+        fleet = Fleet(None, self.fx.th_homes, self.fx.user_home)
+        w = fleet.attribute(SessionInfo(cwd=os.path.join(self.fx.user_home, "code", "x")))
+        self.assertEqual((w.key, w.kind, w.name), (f"session:{self.fx.user_home}/code/x", "session", "~/code/x"))
+        self.assertEqual(fleet.attribute(SessionInfo(cwd="/srv/y")).name, "/srv/y")
+        self.assertEqual(fleet.attribute(SessionInfo()).name, "(unknown directory)")
+
+    def test_no_home_ignores_fleet_clues(self):
+        fleet = Fleet(None, self.fx.th_homes, self.fx.user_home)
+        clue = (os.path.join(self.fx.th_homes, "mate"), TASK)
+        worktree = os.path.join(self.fx.root, ".treehouse", "repo", "1")
+        for cwd in (worktree, os.path.join(self.fx.th_homes, "mate", "x")):
+            w = fleet.attribute(SessionInfo(cwd=cwd, inbox=clue, brief=clue))
+            self.assertEqual((w.kind, w.name), ("session", cwd))
+
+    def test_no_home_reload_finds_nothing(self):
+        fleet = Fleet(None, self.fx.th_homes, self.fx.user_home)
+        fleet.reload()
+        self.assertEqual((fleet.secondmates, fleet.worktrees, fleet.titles, fleet.efforts), ({}, {}, {}, {}))
+
     def test_session_head_without_msg_is_incomplete_at_eof(self):
         info = read_session_head(self.fx.session("a", "/x"))
         self.assertEqual(info.cwd, "/x")

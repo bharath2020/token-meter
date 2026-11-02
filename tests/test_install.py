@@ -60,6 +60,7 @@ class InstallScriptTest(unittest.TestCase):
         self.assertTrue(os.access(launcher, os.X_OK))
         self.assertIn(install_dir, result.stdout)
         self.assertIn("is not on your PATH", result.stdout)
+        self.assertIn("start it with: token-meter web", result.stdout)
 
         run = subprocess.run([launcher, "--help"], env=self.env(), capture_output=True, text=True,
                              timeout=60, cwd=self.root)

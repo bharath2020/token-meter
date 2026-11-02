@@ -57,6 +57,11 @@ def _cut(text, width):
     return text if len(text) <= width else text[:max(0, width - 1)] + "…"
 
 
+def _cut_start(text, width):
+    """Like _cut, for a directory: its end is what tells two sessions apart."""
+    return text if len(text) <= width else "…" + text[-max(1, width - 1):]
+
+
 def render(snap, width=120, color=True, window="1h"):
     """Return the frame as text, ``width`` columns wide."""
     now = snap["generated_at"]
@@ -99,7 +104,8 @@ def render(snap, width=120, color=True, window="1h"):
         cells += [usd(w[k]["cost"]["total"]) for k in WINDOWS]
         if show_split:
             cells += ["|"] + [tok(w[window]["tokens"][key]) for key, _ in SPLIT]
-        row = _cut(name, name_w).ljust(name_w) + "".join(" " + _cut(c, cw).rjust(cw) for c, (_, cw) in zip(cells, cols))
+        cut_name = _cut_start if r.get("kind") == "session" else _cut
+        row = cut_name(name, name_w).ljust(name_w) + "".join(" " + _cut(c, cw).rjust(cw) for c, (_, cw) in zip(cells, cols))
         if r["burning"]:
             lines.append(paint("● ", RED, BOLD) + paint(row, YELLOW, BOLD))
         elif not w[window]["tokens"]["total"]:

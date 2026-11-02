@@ -182,7 +182,7 @@ footer{margin-top:16px;font-size:12px;color:var(--muted);display:flex;gap:6px 16
 (function(){
 "use strict";
 var WINS=["5m","1h","today","48h"], WLBL={"5m":"5 min","1h":"1 hour","today":"Today","48h":"48 hours"};
-var KIND={firstmate:"firstmate",secondmate:"second mate",worker:"worker",other:"not fleet"};
+var KIND={firstmate:"firstmate",secondmate:"second mate",worker:"worker",other:"not fleet",session:"session"};
 var st={win:"1h",hideOther:false};
 try{var sw=localStorage.getItem("tm.window");if(WINS.indexOf(sw)>=0)st.win=sw;st.hideOther=localStorage.getItem("tm.hideOther")==="1";}catch(e){}
 function save(k,v){try{localStorage.setItem(k,v)}catch(e){}}

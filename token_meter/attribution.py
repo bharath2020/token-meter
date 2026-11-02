@@ -33,7 +33,7 @@ class SessionInfo:
 @dataclass(frozen=True)
 class Worker:
     key: str
-    kind: str  # firstmate | secondmate | worker | other
+    kind: str  # firstmate | secondmate | worker | other, or session when there is no Firstmate home
     name: str
     title: str = None
     owner: str = None
@@ -148,7 +148,11 @@ def _read_backlog(home):
 
 
 class Fleet:
-    """A snapshot of the fleet layout: homes, worktrees and backlog titles."""
+    """A snapshot of the fleet layout: homes, worktrees and backlog titles.
+
+    With no Firstmate home (``home`` is None) there is no fleet: nothing is read and every
+    session is attributed to its working directory.
+    """
 
     def __init__(self, home, treehouse_homes=None, user_home=None):
         self.home = _strip(home)
@@ -161,6 +165,8 @@ class Fleet:
         self.reload()
 
     def reload(self):
+        if self.home is None:
+            return
         secondmates, worktrees, efforts = {}, {}, {}
         main_metas = sorted(glob.glob(os.path.join(self.home, "state", "*.meta")))
         for path in main_metas:
@@ -210,6 +216,8 @@ class Fleet:
 
     def attribute(self, info):
         cwd = info.cwd or ""
+        if self.home is None:
+            return Worker(f"session:{cwd}", "session", self._shown(cwd))
         for sm_home, sm in self.secondmates.items():
             if cwd and _under(cwd, sm_home):
                 return Worker(f"secondmate:{sm}", "secondmate", sm, self._title(self.home, sm),
@@ -232,5 +240,7 @@ class Fleet:
         if "/.treehouse/" in cwd:
             rest = cwd.split("/.treehouse/", 1)[1]
             return Worker(f"treehouse:{rest}", "worker", f"(unidentified worker) {rest}")
-        shown = "~" + cwd[len(self.user_home):] if cwd and _under(cwd, self.user_home) else (cwd or "(unknown directory)")
-        return Worker(f"other:{cwd}", "other", f"not fleet work: {shown}")
+        return Worker(f"other:{cwd}", "other", f"not fleet work: {self._shown(cwd)}")
+
+    def _shown(self, cwd):
+        return "~" + cwd[len(self.user_home):] if cwd and _under(cwd, self.user_home) else (cwd or "(unknown directory)")

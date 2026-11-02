@@ -75,7 +75,7 @@ main() {
         *":$bin_dir:"*) ;;
         *) say "warning: $bin_dir is not on your PATH; add it, e.g. export PATH=\"$bin_dir:\$PATH\"" ;;
     esac
-    say "start it from your Firstmate home with: token-meter web   (or: token-meter tui)"
+    say "start it with: token-meter web   (or: token-meter tui)"
 }
 
 main "$@"
