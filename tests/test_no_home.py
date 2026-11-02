@@ -16,12 +16,12 @@ ENV_DROP = ("TOKEN_METER_FIRSTMATE_HOME", "TOKEN_METER_HOSTS", "TOKEN_METER_PORT
 SESSION_DIR = "/synthetic/code/alpha"
 
 
-def transcript(cwd, ts):
+def transcript(cwd, ts, model="claude-opus-5-5"):
     stamp = datetime.fromtimestamp(ts, timezone.utc).isoformat().replace("+00:00", "Z")
     return "\n".join(json.dumps(d) for d in (
         {"type": "user", "cwd": cwd, "timestamp": stamp, "message": {"role": "user", "content": "hi"}},
         {"type": "assistant", "cwd": cwd, "timestamp": stamp, "requestId": "req_1",
-         "message": {"id": "msg_1", "model": "claude-opus-5-5",
+         "message": {"id": "msg_1", "model": model,
                      "usage": {"input_tokens": 1000, "output_tokens": 500}}},
     )) + "\n"
 
@@ -40,10 +40,10 @@ class NoHomeStart(unittest.TestCase):
         self.cwd = os.path.join(self.root, "somewhere")
         self.user_home = os.path.join(self.root, "user")
         self.projects = os.path.join(self.user_home, ".claude", "projects")
-        session_log = os.path.join(self.projects, "proj", "session.jsonl")
+        self.session_log = os.path.join(self.projects, "proj", "session.jsonl")
         os.makedirs(self.cwd)
-        os.makedirs(os.path.dirname(session_log))
-        with open(session_log, "w") as f:
+        os.makedirs(os.path.dirname(self.session_log))
+        with open(self.session_log, "w") as f:
             f.write(transcript(SESSION_DIR, time.time() - 60))
 
     def env(self):
@@ -60,14 +60,21 @@ class NoHomeStart(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn("…/code/alpha", run.stdout)
 
+    def test_narrow_tui_keeps_the_unpriced_marker_of_a_long_directory(self):
+        with open(self.session_log, "w") as f:
+            f.write(transcript(SESSION_DIR, time.time() - 60, model="mystery-model"))
+        run = subprocess.run(self.command("tui", "--once"), cwd=self.cwd, env={**self.env(), "COLUMNS": "80"},
+                             capture_output=True, text=True, timeout=60)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn("! …ode/alpha", run.stdout)
+
     def test_tui_reports_the_sessions_it_finds(self):
         run = subprocess.run(self.command("tui", "--once"), cwd=self.cwd, env={**self.env(), "COLUMNS": "200"},
                              capture_output=True, text=True, timeout=60)
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(SESSION_DIR, run.stdout)
         self.assertNotIn("not fleet work", run.stdout)
-        self.assertNotIn("no Firstmate home", run.stdout)
-        self.assertIn("no Firstmate home", run.stderr)
+        self.assertEqual(run.stderr, "")
 
     def test_tui_starts_when_the_transcripts_directory_is_missing(self):
         env = self.env()
@@ -97,6 +104,7 @@ class NoHomeStart(unittest.TestCase):
             self.assertEqual(r.status, 200)
         self.assertEqual([(w["kind"], w["name"]) for w in snap["workers"]], [("session", SESSION_DIR)])
         self.assertEqual(snap["workers"][0]["windows"]["1h"]["tokens"]["total"], 1500)
+        self.assertIs(snap["has_firstmate_home"], False)
 
 
 if __name__ == "__main__":

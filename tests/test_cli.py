@@ -120,22 +120,12 @@ class MainDefaultsTest(CleanEnv):
         served = self.run_main(["web"], cwd=home)
         self.assertEqual(served["monitor"], ("monitor", home))
 
-    def test_no_home_starts_with_a_notice_saying_how_to_name_one(self):
+    def test_no_home_starts_without_complaint(self):
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
             served = self.run_main(["web"])
         self.assertEqual(served["monitor"], ("monitor", None))
-        self.assertIn("no Firstmate home", err.getvalue())
-        self.assertIn("--home", err.getvalue())
-        self.assertIn(cli.HOME_ENV, err.getvalue())
-
-    def test_named_home_prints_no_notice(self):
-        home = make_home(os.path.join(self.root, "fm"))
-        for argv, cwd in ((["web", "--home", home], None), (["web"], home)):
-            err = io.StringIO()
-            with contextlib.redirect_stderr(err):
-                self.run_main(argv, cwd=cwd)
-            self.assertEqual(err.getvalue(), "")
+        self.assertEqual(err.getvalue(), "")
 
     def test_named_home_that_is_missing_keeps_its_error(self):
         missing = os.path.join(self.root, "nope")

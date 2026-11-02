@@ -34,9 +34,9 @@ To see Firstmate workers, run these from your Firstmate home, pass `--home`, or 
 
 The Firstmate home is taken from `--home`, else `TOKEN_METER_FIRSTMATE_HOME`, else the
 current directory if it is itself a Firstmate home (has `bin/`, `data/` and `state/`
-subdirectories; parent directories are not searched). If none of them names one, it says
-so on stderr and starts anyway, listing each session under its working directory. A
-`--home` or `TOKEN_METER_FIRSTMATE_HOME` path that is not a directory is an error.
+subdirectories; parent directories are not searched). If none of them names one, it
+starts anyway, listing each session under its working directory. A `--home` or
+`TOKEN_METER_FIRSTMATE_HOME` path that is not a directory is an error.
 
 The web server listens on `127.0.0.1:4791` only. To reach it from another device, add
 that machine's address with `--host` (or `TOKEN_METER_HOSTS`), for example
@@ -124,8 +124,10 @@ a bucket's breakdown.
 ## How sessions are attributed to workers
 
 With no Firstmate home there are no workers to attribute to: each working directory gets
-its own row, and the steps below do not apply. The terminal view keeps the end of a long
-directory, since that is what tells two rows apart.
+its own row, and the steps below do not apply. The web page labels these rows "session"
+and has no "Hide not-fleet work" checkbox, since there is no fleet to tell them apart from.
+The terminal view keeps the end of a long directory, since that is what tells two rows
+apart.
 
 With a Firstmate home, each session is labelled from its working directory and the first lines of its log
 (re-checked every 30 seconds until known); the fleet layout and backlog are re-read every

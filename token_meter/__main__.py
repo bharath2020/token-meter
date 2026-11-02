@@ -57,10 +57,6 @@ def main(argv=None):
         home = resolve_home(args.home)
     except ValueError as e:
         p.error(str(e))
-    if home is None:
-        print("token-meter: no Firstmate home, listing sessions by working directory; for worker "
-              f"attribution pass --home <path>, set {HOME_ENV}, or run from a Firstmate home",
-              file=sys.stderr, flush=True)
     monitor = Monitor(args.projects, home)
     if args.view == "web":
         from .server import serve
