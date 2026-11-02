@@ -127,11 +127,12 @@ With no Firstmate home there are no workers to attribute to: each working direct
 its own row, and the steps below do not apply. The web page labels these rows "session"
 and has no "Hide not-fleet work" checkbox, since there is no fleet to tell them apart from.
 The terminal view keeps the end of a long directory, since that is what tells two rows
-apart.
+apart. Both views and this document still say "fleet" and "worker": without a home, those
+mean all sessions and one of these rows.
 
-With a Firstmate home, each session is labelled from its working directory and the first lines of its log
-(re-checked every 30 seconds until known); the fleet layout and backlog are re-read every
-30 seconds.
+With a Firstmate home, each session is labelled from its working directory and the first
+lines of its log (re-checked every 30 seconds until known); the fleet layout and backlog
+are re-read every 30 seconds.
 
 1. Working directory inside a second mate's home → that second mate. Second-mate homes
    come from `<firstmate home>/state/*.meta` files with `kind=secondmate` and `home=`;
