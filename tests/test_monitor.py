@@ -96,6 +96,14 @@ class MonitorTestBase(unittest.TestCase):
         return rows[0]
 
 
+class HomeFlagTest(MonitorTestBase):
+    def test_snapshot_says_whether_a_home_is_named(self):
+        self.assertIs(self.snap()["has_firstmate_home"], True)
+        no_home = Monitor(self.projects, None, treehouse_homes=self.th_homes, clock=self.clock,
+                          user_home=self.user_home)
+        self.assertIs(self.snap(no_home)["has_firstmate_home"], False)
+
+
 class WindowsTest(MonitorTestBase):
     def test_calls_land_in_right_windows(self):
         ages = [120, 30 * 60, 3 * HOUR, 47 * HOUR, 49 * HOUR]

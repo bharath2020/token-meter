@@ -171,7 +171,7 @@ footer{margin-top:16px;font-size:12px;color:var(--muted);display:flex;gap:6px 16
     <div class="seg" role="group" aria-label="Window for per-worker breakdown" id="seg">
       <button type="button" data-w="5m">5m</button><button type="button" data-w="1h">1h</button><button type="button" data-w="today">today</button><button type="button" data-w="48h">48h</button>
     </div>
-    <label class="tog"><input type="checkbox" id="hideOther"> Hide not-fleet work <span id="hiddenN"></span></label>
+    <label class="tog" id="hideOtherTog" style="display:none"><input type="checkbox" id="hideOther"> Hide not-fleet work <span id="hiddenN"></span></label>
   </div>
 
   <section class="list" id="list" aria-live="off"><div class="empty">Waiting for the first snapshot…</div></section>
@@ -182,7 +182,7 @@ footer{margin-top:16px;font-size:12px;color:var(--muted);display:flex;gap:6px 16
 (function(){
 "use strict";
 var WINS=["5m","1h","today","48h"], WLBL={"5m":"5 min","1h":"1 hour","today":"Today","48h":"48 hours"};
-var KIND={firstmate:"firstmate",secondmate:"second mate",worker:"worker",other:"not fleet"};
+var KIND={firstmate:"firstmate",secondmate:"second mate",worker:"worker",other:"not fleet",session:"session"};
 var st={win:"1h",hideOther:false};
 try{var sw=localStorage.getItem("tm.window");if(WINS.indexOf(sw)>=0)st.win=sw;st.hideOther=localStorage.getItem("tm.hideOther")==="1";}catch(e){}
 function save(k,v){try{localStorage.setItem(k,v)}catch(e){}}
@@ -273,6 +273,7 @@ function renderList(){
 
 function render(){
   if(!snap)return;
+  $("hideOtherTog").style.display=snap.has_firstmate_home?"":"none";
   renderStrip();renderList();
   var f=snap.fleet||{};
   document.title=(n(f.burning_count)?"● ":"")+fC(f.rate_usd_per_hour)+"/h · Token Meter";

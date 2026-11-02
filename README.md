@@ -1,9 +1,10 @@
 # Token Meter
 
-A read-only live monitor of token burn and API-equivalent cost per Firstmate worker
-(task workers, second mates and the main Firstmate session), built from Claude Code's
-session logs. It shows which worker is consuming tokens right now, as a web page
-and as a terminal table.
+A read-only live monitor of token burn and API-equivalent cost, built from Claude Code's
+session logs. It shows what is consuming tokens right now, as a web page and as a terminal
+table. It needs no Firstmate: on its own it lists sessions by working directory, and given
+a Firstmate home it attributes them to workers (task workers, second mates and the main
+Firstmate session).
 
 ## Install
 
@@ -22,17 +23,20 @@ From a clone, `./token-meter` in the repository works the same way without insta
 ## Quick start
 
 ```sh
-cd ~/path/to/your/firstmate/home   # or pass --home, or set TOKEN_METER_FIRSTMATE_HOME
-token-meter web                    # then open http://127.0.0.1:4791/
-token-meter tui                    # live terminal table (Ctrl-C to quit)
+token-meter web   # then open http://127.0.0.1:4791/
+token-meter tui   # live terminal table (Ctrl-C to quit)
 ```
+
+To see Firstmate workers, run these from your Firstmate home, pass `--home`, or set
+`TOKEN_METER_FIRSTMATE_HOME`.
 
 ## Start a view
 
 The Firstmate home is taken from `--home`, else `TOKEN_METER_FIRSTMATE_HOME`, else the
 current directory if it is itself a Firstmate home (has `bin/`, `data/` and `state/`
-subdirectories; parent directories are not searched). If none is found it exits with an
-error saying how to name one.
+subdirectories; parent directories are not searched). If none of them names one, it
+starts anyway, listing each session under its working directory. A `--home` or
+`TOKEN_METER_FIRSTMATE_HOME` path that is not a directory is an error.
 
 The web server listens on `127.0.0.1:4791` only. To reach it from another device, add
 that machine's address with `--host` (or `TOKEN_METER_HOSTS`), for example
@@ -55,7 +59,7 @@ Useful options (`token-meter --help` lists all):
 | `--window` | `1h` | tui: window for the token split columns (`5m`, `1h`, `today`, `48h`) |
 | `--once` | | tui: print one frame and exit |
 | `--projects` | `~/.claude/projects` (`TOKEN_METER_PROJECTS`) | session logs |
-| `--home` | `TOKEN_METER_FIRSTMATE_HOME`, else the current directory if it is a Firstmate home | Firstmate home |
+| `--home` | `TOKEN_METER_FIRSTMATE_HOME`, else the current directory if it is a Firstmate home, else none | Firstmate home |
 
 ## What it shows
 
@@ -75,7 +79,7 @@ sparkline of fleet cost over the last 48 hours.
 
 ## How it reads usage
 
-Every worker runs Claude Code, which logs to `~/.claude/projects/**/*.jsonl`. Each
+Claude Code logs every session to `~/.claude/projects/**/*.jsonl`. Each
 `assistant` line carries `message.usage` (`input_tokens`, `output_tokens`,
 `cache_creation_input_tokens` with `cache_creation.ephemeral_5m_input_tokens` /
 `ephemeral_1h_input_tokens`, `cache_read_input_tokens`), `message.model`, `requestId`
@@ -119,9 +123,16 @@ a bucket's breakdown.
 
 ## How sessions are attributed to workers
 
-Each session is labelled from its working directory and the first lines of its log
-(re-checked every 30 seconds until known); the fleet layout and backlog are re-read every
-30 seconds.
+With no Firstmate home there are no workers to attribute to: each working directory gets
+its own row, and the steps below do not apply. The web page labels these rows "session"
+and has no "Hide not-fleet work" checkbox, since there is no fleet to tell them apart from.
+The terminal view keeps the end of a long directory, since that is what tells two rows
+apart. Both views and this document still say "fleet" and "worker": without a home, those
+mean all sessions and one of these rows.
+
+With a Firstmate home, each session is labelled from its working directory and the first
+lines of its log (re-checked every 30 seconds until known); the fleet layout and backlog
+are re-read every 30 seconds.
 
 1. Working directory inside a second mate's home → that second mate. Second-mate homes
    come from `<firstmate home>/state/*.meta` files with `kind=secondmate` and `home=`;

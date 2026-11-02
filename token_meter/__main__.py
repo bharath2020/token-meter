@@ -18,7 +18,8 @@ def looks_like_home(path):
 
 def resolve_home(flag, env=None, cwd=None):
     """--home, then $TOKEN_METER_FIRSTMATE_HOME, then the current directory if it is itself a
-    Firstmate home. Raises ValueError with a hint when none is found or the given one is missing."""
+    Firstmate home. Returns None when none of them names one; raises ValueError when the given
+    one is missing."""
     env = os.environ if env is None else env
     given = flag or env.get(HOME_ENV)
     if given:
@@ -27,10 +28,7 @@ def resolve_home(flag, env=None, cwd=None):
             raise ValueError(f"Firstmate home {home} is not a directory")
         return home
     home = os.path.abspath(cwd or os.getcwd())
-    if not looks_like_home(home):
-        raise ValueError("no Firstmate home found: pass --home <path>, set "
-                         f"{HOME_ENV}, or run from a Firstmate home")
-    return home
+    return home if looks_like_home(home) else None
 
 
 def parse_hosts(value):
@@ -38,12 +36,13 @@ def parse_hosts(value):
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="token-meter", description="Live token burn per Firstmate worker (read-only).")
+    p = argparse.ArgumentParser(prog="token-meter", description="Live token burn per Claude Code session or Firstmate worker (read-only).")
     p.add_argument("view", choices=("web", "tui"), help="web page server or terminal table")
     p.add_argument("--projects", default=os.environ.get("TOKEN_METER_PROJECTS", os.path.expanduser("~/.claude/projects")),
                    help="Claude Code session logs (default ~/.claude/projects)")
     p.add_argument("--home",
-                   help=f"Firstmate home (default ${HOME_ENV}, else the current directory if it is a Firstmate home)")
+                   help=f"Firstmate home (default ${HOME_ENV}, else the current directory if it is a Firstmate home, "
+                        "else none: sessions are listed by working directory)")
     p.add_argument("--interval", type=float, default=2.0, help="seconds between updates (default 2)")
     p.add_argument("--host", default=os.environ.get("TOKEN_METER_HOSTS", DEFAULT_HOSTS),
                    help=f"web: comma-separated addresses to listen on (default {DEFAULT_HOSTS})")

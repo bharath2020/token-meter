@@ -60,15 +60,17 @@ class ResolveHomeTest(CleanEnv):
         home = make_home(os.path.join(self.root, "fm"))
         deep = os.path.join(home, "data", "task-1")
         os.makedirs(deep)
-        with self.assertRaisesRegex(ValueError, "no Firstmate home found"):
-            cli.resolve_home(None, env={}, cwd=deep)
+        self.assertIsNone(cli.resolve_home(None, env={}, cwd=deep))
 
     def test_partial_layout_is_not_a_home(self):
         partial = os.path.join(self.root, "partial")
         os.makedirs(os.path.join(partial, "state"))
         os.makedirs(os.path.join(partial, "data"))
-        with self.assertRaisesRegex(ValueError, "no Firstmate home found.*--home.*TOKEN_METER_FIRSTMATE_HOME"):
-            cli.resolve_home(None, env={}, cwd=partial)
+        self.assertIsNone(cli.resolve_home(None, env={}, cwd=partial))
+
+    def test_nothing_named_and_cwd_not_a_home_is_none(self):
+        self.assertIsNone(cli.resolve_home(None, env={}, cwd=self.root))
+        self.assertIsNone(cli.resolve_home(None, env={cli.HOME_ENV: ""}, cwd=self.root))
 
     def test_empty_env_value_falls_through_to_cwd(self):
         home = make_home(os.path.join(self.root, "fm"))
@@ -118,13 +120,23 @@ class MainDefaultsTest(CleanEnv):
         served = self.run_main(["web"], cwd=home)
         self.assertEqual(served["monitor"], ("monitor", home))
 
-    def test_no_home_is_a_clear_error(self):
+    def test_no_home_starts_without_complaint(self):
         err = io.StringIO()
-        with contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as ctx:
-            self.run_main(["web"])
-        self.assertEqual(ctx.exception.code, 2)
-        self.assertIn("no Firstmate home found", err.getvalue())
-        self.assertIn("--home", err.getvalue())
+        with contextlib.redirect_stderr(err):
+            served = self.run_main(["web"])
+        self.assertEqual(served["monitor"], ("monitor", None))
+        self.assertEqual(err.getvalue(), "")
+
+    def test_named_home_that_is_missing_keeps_its_error(self):
+        missing = os.path.join(self.root, "nope")
+        for view in ("web", "tui"):
+            for argv, env in (([view, "--home", missing], {}), ([view], {cli.HOME_ENV: missing})):
+                err = io.StringIO()
+                with mock.patch.dict(os.environ, env), contextlib.redirect_stderr(err), \
+                        self.assertRaises(SystemExit) as ctx:
+                    self.run_main(argv)
+                self.assertEqual(ctx.exception.code, 2)
+                self.assertIn("is not a directory", err.getvalue())
 
     def test_help_needs_no_home(self):
         out = io.StringIO()

@@ -266,6 +266,7 @@ class Monitor:
             "today_start": starts["today"],
             "window_start_48h": starts["48h"],
             "pricing_note": "API-equivalent cost at list prices",
+            "has_firstmate_home": self.fleet.home is not None,
             "fleet": {
                 "windows": fleet_windows,
                 **_rates(fleet_windows["5m"]),
